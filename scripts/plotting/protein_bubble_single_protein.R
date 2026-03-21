@@ -201,7 +201,7 @@ plot_single_protein_bubble_clean <- function(
 
 ##调用函数
 
-single_df <- read_single_protein_data("singel protein.csv")
+single_df <- read_single_protein_data("data/example/single_protein.csv")
 
 p_single <- plot_single_protein_bubble_clean(
   single_df,
