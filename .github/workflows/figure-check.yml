@@ -1,0 +1,47 @@
+name: figure-check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  render-figures:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - name: Install plotting packages
+        run: |
+          Rscript -e 'install.packages(c(
+            "ggplot2",
+            "dplyr",
+            "readr",
+            "ggrepel",
+            "patchwork",
+            "cowplot",
+            "svglite"
+          ), repos = "https://cloud.r-project.org")'
+
+      - name: Check all R scripts parse correctly
+        run: |
+          Rscript -e 'files <- list.files(".", pattern="\\.R$", full.names=TRUE); for (f in files) { message("Checking: ", f); parse(file = f) }'
+
+      - name: Render CI example figure
+        run: |
+          Rscript ci_render_example.R
+
+      - name: Upload figure artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-figures
+          path: results/ci/
