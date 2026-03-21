@@ -1,5 +1,4 @@
 name: figure-check
-
 on:
   push:
   pull_request:
@@ -38,7 +37,7 @@ jobs:
 
       - name: Render CI example figure
         run: |
-          Rscript ci_render_example.R
+          Rscript scripts/ci/ci_render_example.R
 
       - name: Upload figure artifact
         uses: actions/upload-artifact@v4
