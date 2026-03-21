@@ -468,7 +468,7 @@ save_bubble_plot <- function(
 # 6. Example usage
 # 6. 使用示例
 # =========================================================
-bubble_df <- read_xy_bubble_data("western_blot_xy.csv")
+bubble_df <- read_xy_bubble_data("data/example/western_blot_xy.csv")
 
 print(bubble_df)
 summary(bubble_df)
