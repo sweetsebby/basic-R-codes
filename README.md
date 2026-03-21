@@ -37,6 +37,8 @@ This repository collects reusable R scripts for bioinformatics data analysis and
 - `scripts/plotting/protein_bubble_multi_protein.R` — Protein bubble plot (multi-protein)  
 - `scripts/plotting/rank_plot_manual.R` — Ranked plot with manual highlight/label logic  
 
+- `scripts/plotting/gse116256_aml_mapping_multivolcano.R`
+— GSE116256 AML cluster-to-healthy mapping + core-cluster multi-volcano plots（Seurat Label Transfer + jjVolcano）
 ## Enrichment scripts / 富集分析脚本
 
 - `scripts/enrichment/run_preranked_gsea_from_deseq2.R`  
