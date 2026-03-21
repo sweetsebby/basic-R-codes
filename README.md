@@ -1,4 +1,21 @@
-# basic-R-code
-That's my basic R codes about data analyse and drawing
+# Basic R Codes for Bioinformatics Analysis
 
-#主要存储我复现的 CNS figure
+This repository contains R scripts for:
+
+- Differential expression analysis (DEG)
+- Volcano plot visualization
+- GSEA analysis
+- Protein expression visualization
+
+## Scripts
+
+- `Volcano plot.R` – generate volcano plots
+- `rank_plot_manual.R` – ranking visualization
+- `protein_bubble_*.R` – protein expression plots
+
+## Usage
+
+Run scripts in R:
+
+```r
+source("Volcano plot.R")
