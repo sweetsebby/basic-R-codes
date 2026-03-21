@@ -19,3 +19,10 @@ Run scripts in R:
 
 ```r
 source("Volcano plot.R")
+
+## Reproducible figure check
+
+This repository uses GitHub Actions to:
+- install R and plotting packages
+- check R scripts
+- render an example figure automatically
