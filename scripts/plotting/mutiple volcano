@@ -1,0 +1,303 @@
+# =========================================================
+# multiply_volcano.R
+# jjVolcano grouped volcano with:
+# 1) auto / manual / no gene label switch
+# 2) optional cluster strip labels
+# 3) yellow-green volcano point colors
+# 4) original my_cols8 panel strip colors
+#
+# 功能：
+# 1）支持自动标记 top genes
+# 2）支持手动指定 marker genes
+# 3）支持完全不显示基因标签
+# 4）支持显示/隐藏中间 cluster 条带标签
+# 5）火山图点颜色使用你之前喜欢的黄绿配色
+# 6）panel 顶部条带颜色保留原先 my_cols8 风格
+# =========================================================
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(ggplot2)
+  library(scRNAtoolVis)
+})
+
+# =========================================================
+# 0. Read input DEG table
+# 0. 读入差异分析结果表
+# =========================================================
+# 这里读入的是你前面已经整理好的 long-format DEG 表
+# 每一行代表：某个 gene 在某个 cluster 中的差异分析结果
+deg_tbl <- read_csv(
+  "~/AML_scRNA_project/core_cluster_multivolcano/core_clusters_2_5_9_10_vs_other_AMLlike_DEG.csv",
+  show_col_types = FALSE
+)
+
+# =========================================================
+# 1. Column name settings
+# 1. 列名设置
+# =========================================================
+# 如果以后换别的 DEG 表，只要这里对应改列名即可
+gene_col  <- "gene"         # 基因名列
+p_col     <- "p_val"        # 原始P值列
+fc_col    <- "avg_log2FC"   # log2 fold change 列
+padj_col  <- "p_val_adj"    # 校正后P值列
+group_col <- "cluster"      # 分组列（这里是 cluster）
+
+# =========================================================
+# 2. Groups to display
+# 2. 需要展示的分组
+# =========================================================
+# group_order_raw 是原始表里的真实分组名字
+# 顺序会决定 panel 的排列顺序
+group_order_raw <- c("Cluster_2", "Cluster_5", "Cluster_9", "Cluster_10")
+
+# =========================================================
+# 3. Display labels for panels
+# 3. panel 上显示的标签文字
+# =========================================================
+# 左边是原始 cluster 名称
+# 右边是图中最终显示的标签
+group_label_map <- c(
+  "Cluster_2"  = "C2 | Inflam-mono",
+  "Cluster_5"  = "C5 | Mono-macro",
+  "Cluster_9"  = "C9 | Mono-macro",
+  "Cluster_10" = "C10 | Mono/Inflam"
+)
+
+# =========================================================
+# 4. Gene label switch
+# 4. 基因标签开关
+# =========================================================
+# label_mode 可选：
+# "auto"   -> 自动标记 top genes
+# "manual" -> 手动标记指定 genes
+# "none"   -> 不显示基因标签
+label_mode <- "auto"
+
+# -------------------------
+# 4.1 Automatic mode
+# 4.1 自动标记模式
+# -------------------------
+# topGeneN_use 表示每个 panel 自动标记的 top genes 数量
+# 一般 3~5 比较稳，太大容易挤
+topGeneN_use <- 4
+
+# -------------------------
+# 4.2 Manual mode
+# 4.2 手动标记模式
+# -------------------------
+# 当 label_mode = "manual" 时，会只标注这里指定的基因
+manual_markers <- c(
+  "FCGR3A", "CD163", "CD14",
+  "PCOLCE2", "TP53INP2", "DEFB1",
+  "MS4A3", "ANLN", "MKI67",
+  "G0S2", "NAMPT", "ICAM1"
+)
+
+# =========================================================
+# 5. Cluster strip label switch
+# 5. 中间 cluster 条带标签开关
+# =========================================================
+# TRUE  -> 显示中间 cluster 标签
+# FALSE -> 不显示中间 cluster 标签
+show_cluster_labels <- TRUE
+
+# 如果显示 cluster 标签，下面控制它的样式
+cluster_label_size  <- 5.8      # 中间 cluster 标签字号
+cluster_label_color <- "white"  # 中间 cluster 标签颜色
+cluster_label_face  <- "bold"   # 中间 cluster 标签字重
+
+# =========================================================
+# 6. General plotting settings
+# 6. 其他绘图参数
+# =========================================================
+log2FC_cutoff  <- 0.5           # 火山图 log2FC 阈值
+gene_label_size <- 4.2          # 基因标签字号（传给 jjVolcano）
+label_fontface <- "italic"      # 基因标签字体
+legend_pos     <- c(0.96, 0.985) # 图例位置
+
+# =========================================================
+# 7. Output settings
+# 7. 输出路径设置
+# =========================================================
+out_dir_mv <- "~/AML_scRNA_project/general_grouped_volcano"
+dir.create(out_dir_mv, showWarnings = FALSE, recursive = TRUE)
+
+output_png <- file.path(out_dir_mv, "grouped_volcano_jjVolcano_yellowgreen.png")
+output_pdf <- file.path(out_dir_mv, "grouped_volcano_jjVolcano_yellowgreen.pdf")
+
+# =========================================================
+# 8. Palette settings
+# 8. 配色设置
+# =========================================================
+
+# -------------------------
+# 8.1 Original my_cols8 palette
+# 8.1 原始 my_cols8 调色板
+# -------------------------
+# 这套颜色保留作为 panel 顶部条带颜色
+my_cols8 <- c(
+  rgb(29,  82, 161, maxColorValue = 255),  # 1 deep blue
+  rgb(113,109, 178, maxColorValue = 255),  # 2 purple-blue
+  rgb(101,200, 204, maxColorValue = 255),  # 3 cyan
+  rgb(114,193,  90, maxColorValue = 255),  # 4 green
+  rgb(240,233,  75, maxColorValue = 255),  # 5 yellow
+  rgb(243,121,  59, maxColorValue = 255),  # 6 orange
+  rgb(198, 81, 159, maxColorValue = 255),  # 7 magenta
+  rgb(243,135, 141, maxColorValue = 255)   # 8 salmon
+)
+
+# -------------------------
+# 8.2 Volcano point colors
+# 8.2 火山图点颜色
+# -------------------------
+# 使用你之前喜欢的黄绿体系
+col_up   <- "#10A37F"  # 绿色
+col_down <- "#F39C12"  # 黄色/橙黄
+col_ns   <- "#D9D9D9"  # 灰色（jjVolcano 内部不一定直接用到）
+
+# jjVolcano 的 up/down 配色
+# 注意：如果你发现上下颜色反了，可以把顺序交换
+aesCol_use <- c(col_up, col_down)
+
+# -------------------------
+# 8.3 Panel strip colors
+# 8.3 panel 顶部条带颜色
+# -------------------------
+# 保持原先 my_cols8 风格，不跟随黄绿点颜色变化
+tile_col_use <- my_cols8[c(1, 2, 3, 4)]
+
+# =========================================================
+# 9. Standardize input DEG table
+# 9. 整理输入 DEG 表
+# =========================================================
+# 这里把原始 DEG 表整理成 jjVolcano 需要的格式
+# 并确保列类型正确
+diffData_plot <- deg_tbl %>%
+  transmute(
+    gene       = as.character(.data[[gene_col]]),
+    p_val      = as.numeric(.data[[p_col]]),
+    avg_log2FC = as.numeric(.data[[fc_col]]),
+    p_val_adj  = as.numeric(.data[[padj_col]]),
+    cluster    = as.character(.data[[group_col]])
+  ) %>%
+  filter(
+    !is.na(gene),
+    !is.na(p_val),
+    !is.na(avg_log2FC),
+    !is.na(p_val_adj),
+    !is.na(cluster)
+  ) %>%
+  mutate(
+    # 防止 0 值在取 -log10 时出问题
+    p_val     = ifelse(p_val <= 0, 1e-300, p_val),
+    p_val_adj = ifelse(p_val_adj <= 0, 1e-300, p_val_adj)
+  ) %>%
+  # 只保留想展示的 groups
+  filter(cluster %in% group_order_raw) %>%
+  # 把原始 cluster 名转换成图上显示的名字
+  mutate(cluster = recode(cluster, !!!group_label_map))
+
+# 图中 panel 的最终顺序
+cluster_order_plot <- unname(group_label_map[group_order_raw])
+
+# 简单检查
+print(colnames(diffData_plot))
+print(cluster_order_plot)
+
+# =========================================================
+# 10. Build jjVolcano arguments
+# 10. 构建 jjVolcano 参数
+# =========================================================
+jj_args <- list(
+  diffData = diffData_plot,
+  log2FC.cutoff = log2FC_cutoff,
+  col.type = "updown",
+  aesCol = aesCol_use,
+  tile.col = tile_col_use,
+  cluster.order = cluster_order_plot,
+  size = gene_label_size,
+  fontface = label_fontface,
+  legend.position = legend_pos
+)
+
+# 根据 label_mode 选择不同标记模式
+if (label_mode == "auto") {
+  # 自动标记 top genes
+  jj_args$topGeneN <- topGeneN_use
+} else if (label_mode == "manual") {
+  # 手动标记指定 genes
+  jj_args$myMarkers <- manual_markers
+} else if (label_mode == "none") {
+  # 不显示 gene labels
+  jj_args$topGeneN <- 0
+} else {
+  stop("label_mode must be one of: 'auto', 'manual', 'none'")
+}
+
+# =========================================================
+# 11. Draw grouped volcano plot
+# 11. 绘制 grouped volcano
+# =========================================================
+p_mv_top <- do.call(jjVolcano, jj_args)
+
+# =========================================================
+# 12. Post-fix: cluster strip label switch
+# 12. 后处理：控制 cluster 条带标签显示/样式
+# =========================================================
+# jjVolcano 返回的是 ggplot 对象
+# 这里遍历所有图层，找到 GeomText 层，认为它主要对应中间 cluster 标签
+# 然后根据开关决定：
+# - 显示并放大
+# - 或者隐藏
+for (i in seq_along(p_mv_top$layers)) {
+  g <- p_mv_top$layers[[i]]$geom
+  
+  if (inherits(g, "GeomText")) {
+    if (show_cluster_labels) {
+      p_mv_top$layers[[i]]$aes_params$size <- cluster_label_size
+      p_mv_top$layers[[i]]$aes_params$fontface <- cluster_label_face
+      p_mv_top$layers[[i]]$aes_params$colour <- cluster_label_color
+    } else {
+      p_mv_top$layers[[i]]$aes_params$alpha <- 0
+    }
+  }
+}
+
+# =========================================================
+# 13. Theme cleanup
+# 13. 进一步统一整体样式
+# =========================================================
+p_mv_top <- p_mv_top +
+  theme(
+    axis.title  = element_text(size = 16),
+    axis.text   = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 13),
+    plot.margin = margin(12, 12, 12, 12)
+  )
+
+# 显示图
+print(p_mv_top)
+
+# =========================================================
+# 14. Save figure
+# 14. 保存图片
+# =========================================================
+ggsave(
+  output_png,
+  p_mv_top,
+  width = 16,
+  height = 11,
+  dpi = 300,
+  bg = "white"
+)
+
+ggsave(
+  output_pdf,
+  p_mv_top,
+  width = 16,
+  height = 11,
+  bg = "white"
+)
