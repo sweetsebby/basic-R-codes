@@ -1,0 +1,62 @@
+suppressPackageStartupMessages({
+  library(Seurat)
+  library(ggplot2)
+})
+
+# 1. read object
+seu <- readRDS("~/AML_scRNA_project/healthy_reference_mapping/aml_query_with_transferred_labels.rds")
+
+# 2. quick check
+print(class(seu))
+print(Reductions(seu))
+print(colnames(seu@meta.data))
+
+# 3. your palette
+my_cols8 <- c(
+  rgb(29,  82, 161, maxColorValue = 255),
+  rgb(113,109, 178, maxColorValue = 255),
+  rgb(101,200, 204, maxColorValue = 255),
+  rgb(114,193,  90, maxColorValue = 255),
+  rgb(240,233,  75, maxColorValue = 255),
+  rgb(243,121,  59, maxColorValue = 255),
+  rgb(198, 81, 159, maxColorValue = 255),
+  rgb(243,135, 141, maxColorValue = 255)
+)
+
+get_my_palette <- function(n) {
+  colorRampPalette(my_cols8)(n)
+}
+
+# 4. choose metadata column
+group_by_col <- "predicted.id"
+
+group_levels <- levels(factor(seu@meta.data[[group_by_col]]))
+group_cols <- get_my_palette(length(group_levels))
+names(group_cols) <- group_levels
+
+print(group_levels)
+
+# 5. plot
+p <- DimPlot(
+  object = seu,
+  reduction = "umap",
+  group.by = group_by_col,
+  cols = group_cols,
+  label = TRUE,
+  repel = TRUE
+) +
+  ggtitle("Transferred healthy-like identity") +
+  theme_bw(base_size = 12)
+
+print(p)
+
+# 6. save
+ggsave(
+  "~/AML_scRNA_project/healthy_reference_mapping/test_UMAP_predicted_id.png",
+  p, width = 16, height = 8, dpi = 300, bg = "white"
+)
+
+ggsave(
+  "~/AML_scRNA_project/healthy_reference_mapping/test_UMAP_predicted_id.pdf",
+  p, width = 10, height = 8, bg = "white"
+)
