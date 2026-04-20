@@ -13,7 +13,7 @@
 # 9. P label position can be adjusted separately / P值标签位置可单独调整
 # 10. Save as PNG and PDF / 保存为PNG和PDF
 # =========================================================
-
+#2026_03_09 update_v2: 基因标签自定义选项以及连线长度位置
 # -------------------------
 # 0. Load required packages
 # 0. 加载需要的R包
@@ -67,7 +67,7 @@ y_cutoff_line <- -log10(p_cutoff)
 # 5. 坐标轴设置
 # -------------------------
 auto_axis <- TRUE         # automatic x-axis / x轴自动
-auto_y_axis <- FALSE       # automatic y-axis / y轴自动
+auto_y_axis <- TRUE      # automatic y-axis / y轴自动
 
 # x-axis is always symmetric around 0
 # x轴始终以0为中心左右对称
@@ -80,7 +80,7 @@ y_pad <- 1.5
 # Manual axis limits if automatic mode is off
 # 如果关闭自动模式，则使用手动设置
 manual_x_limit <- 6
-manual_y_max   <- 15
+manual_y_max   <- 300
 
 # If auto_y_axis = TRUE, whether to use quantile instead of max
 # 若auto_y_axis = TRUE，是否用分位数代替最大值
@@ -121,8 +121,8 @@ axis_title_size     <- 18
 count_text_size     <- 7
 gene_text_size      <- 4.5
 p_label_text_size   <- 5
-top_number_text_size <- 18
-top_title_text_size  <- 18
+top_number_text_size <- 14
+top_title_text_size  <- 14
 
 # Output figure size
 # 输出图片尺寸
@@ -140,16 +140,16 @@ out_dpi    <- 600
 # "top"    = only top genes / 只标前N个基因
 # "both"   = manual + top / 手动和top都标
 # "none"   = no labels / 不标任何基因
-label_mode <- "both"
+label_mode <- "manual"
 
 # Manually selected genes
 # 手动指定要标的基因
-manual_genes <- c("SPINK1", "SLC22A1", "FUT7", "CD47")
+manual_genes <- c("SPINK1", "SLC22A1", "FUT7", "CD47","RNASE2","RNASE3","CD34")
 
 # Number of top genes to label
 # 自动标注上调/下调前N个基因
-top_n_up   <- 10
-top_n_down <- 10
+top_n_up   <- 5
+top_n_down <- 5
 
 # Ranking method for top genes
 # top基因排序方式
@@ -157,6 +157,12 @@ top_n_down <- 10
 # "fc"    = by largest fold change / 按最大fold change
 # "score" = by combined score / 按综合分数
 top_rank_by <- "p"
+
+# Split labels into left / right groups
+# 把标签分成左侧和右侧两组
+label_df_left  <- label_df %>% dplyr::filter(logFC < 0)
+label_df_right <- label_df %>% dplyr::filter(logFC > 0)
+
 
 # -------------------------
 # 8. Check columns
@@ -434,13 +440,43 @@ p <- ggplot(df2, aes(x = logFC, y = negLog10P)) +
   
   # Gene labels
   # 基因标签
+
+# Left-side labels: expand outward to the left
+# 左侧标签：向左外扩
+geom_text_repel(
+  data = label_df_left,
+  aes(label = gene),
+  size = gene_text_size,
+  box.padding = 0.5,
+  point.padding = 0.5,
+  direction = "y",
+  nudge_x = -2,
+  nudge_y = 2,
+  hjust = 1,
+  segment.color = "grey25",
+  segment.size = 0.45,
+  min.segment.length = 0,
+  force = 1.2,
+  max.overlaps = Inf,
+  seed = 123
+) +
+  
+  # Right-side labels: expand outward to the right
+  # 右侧标签：向右外扩
   geom_text_repel(
-    data = label_df,
+    data = label_df_right,
     aes(label = gene),
     size = gene_text_size,
-    box.padding = 0.35,
-    point.padding = 0.25,
-    segment.color = NA,
+    box.padding = 0.5,
+    point.padding = 0.5,
+    direction = "y",
+    nudge_x = 2,
+    nudge_y = 15,
+    hjust = 0,
+    segment.color = "grey25",
+    segment.size = 0.45,
+    min.segment.length = 0,
+    force = 1.2,
     max.overlaps = Inf,
     seed = 123
   ) +
